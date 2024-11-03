@@ -38,7 +38,14 @@ class LogInActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val auth = FirebaseAuth.getInstance()
         setContent {
-            LoginScreen(auth)
+            if(auth.currentUser == null) {
+                LoginScreen(auth)
+            } else {
+                startActivity(
+                    Intent(this, MainActivity::class.java)
+                )
+                finish()
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.example.firebasepart_1
 
+import android.app.Activity
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
@@ -33,20 +34,24 @@ class EnterNoteActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val dbRef = FirebaseDatabase.getInstance().reference
         val auth = FirebaseAuth.getInstance()
+
+        val noteId = intent.getStringExtra("uid") ?: ""
+        val noteHeading = intent.getStringExtra("heading") ?: ""
+        val noteContent = intent.getStringExtra("content") ?: ""
         setContent {
-            EnterNoteScreen(dbRef, auth)
+            EnterNoteScreen(dbRef, auth, noteId, noteHeading, noteContent)
         }
     }
 }
 
 @Composable
-fun EnterNoteScreen(databaseReference: DatabaseReference, auth: FirebaseAuth) {
+fun EnterNoteScreen(databaseReference: DatabaseReference, auth: FirebaseAuth, noteId: String, heading: String, content: String) {
     val context = LocalContext.current
     var noteHeading by remember {
-        mutableStateOf("")
+        mutableStateOf(heading)
     }
     var noteContent by remember {
-        mutableStateOf("")
+        mutableStateOf(content)
     }
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -74,16 +79,35 @@ fun EnterNoteScreen(databaseReference: DatabaseReference, auth: FirebaseAuth) {
             })
 
         Button(onClick = {
-            val note = Note(noteHeading, noteContent)
-            val dbRef = databaseReference.child("users").child(auth.currentUser!!.uid).push()
-            dbRef.setValue(note)
-                .addOnCompleteListener { task ->
-                    if(task.isSuccessful) {
-                        Toast.makeText(context, "note added successfully", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(context, "Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+            if(noteId.isBlank()) {
+                val dbRef = databaseReference.child("users").child(auth.currentUser!!.uid).push()
+                val note = Note(noteHeading, noteContent, dbRef.key!!)
+                dbRef.setValue(note)
+                    .addOnCompleteListener { task ->
+                        if(task.isSuccessful) {
+                            Toast.makeText(context, "note added successfully", Toast.LENGTH_SHORT).show()
+                            val activity = context as Activity
+                            activity.setResult(Activity.RESULT_OK)
+                            activity.finish()
+                        } else {
+                            Toast.makeText(context, "Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                        }
                     }
-                }
+            } else {
+                val note = Note(noteHeading, noteContent, noteId)
+                val dbRef = databaseReference.child("users").child(auth.currentUser!!.uid).child(noteId)
+                dbRef.setValue(note)
+                    .addOnCompleteListener { task ->
+                        if(task.isSuccessful) {
+                            Toast.makeText(context, "note updated successfully", Toast.LENGTH_SHORT).show()
+                            val activity = context as Activity
+                            activity.setResult(Activity.RESULT_OK)
+                            activity.finish()
+                        } else {
+                            Toast.makeText(context, "Error: ${task.exception?.message}", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+            }
 
         }, modifier = Modifier
             .padding(top = 8.dp)
